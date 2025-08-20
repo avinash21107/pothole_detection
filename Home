@@ -1,0 +1,131 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Papa from "papaparse";
+import { FaMapMarkedAlt, FaUpload, FaRoad } from "react-icons/fa";
+
+interface DataPoint {
+  lat: number;
+  lng: number;
+  severity: string;
+  sequence: number | null;
+}
+
+const Home = () => {
+  const [fileData, setFileData] = useState<DataPoint[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const navigate = useNavigate();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const processFile = (file: File) => {
+    Papa.parse(file, {
+      header: true,
+      complete: (result) => {
+        if (result.data.length === 0) {
+          alert("Invalid or empty CSV file.");
+          return;
+        }
+
+        const formattedData = result.data
+          .filter((row: any) => row.latitude && row.longitude)
+          .map((row: any) => ({
+            lat: parseFloat(row.latitude),
+            lng: parseFloat(row.longitude),
+            severity: row.severity ? row.severity.trim().toLowerCase() : "unknown",
+            sequence: row.sequence ? parseInt(row.sequence) : null
+          }));
+
+        setFileData(formattedData);
+      },
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.csv')) {
+      processFile(file);
+    } else {
+      alert("Please upload a CSV file!");
+    }
+  };
+
+  return (
+    <div className="home-container">
+      <div className="content-wrapper">
+        <div className="header">
+          <FaRoad className="logo-icon" />
+          <h1>Pothole Severity Mapper</h1>
+          <p className="subtitle">Upload your CSV data to visualize road conditions</p>
+        </div>
+
+        <div className="features">
+          <div className="feature-card">
+            <FaUpload className="feature-icon" />
+            <h3>Easy Upload</h3>
+            <p>Simply drag & drop or select your CSV file</p>
+          </div>
+          <div className="feature-card">
+            <FaMapMarkedAlt className="feature-icon" />
+            <h3>Interactive Map</h3>
+            <p>Visualize pothole locations and severity levels</p>
+          </div>
+        </div>
+
+        <div 
+          className={`upload-zone ${isDragging ? 'dragging' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <FaUpload className="upload-icon" />
+          <p>Drag & drop your CSV file here</p>
+          <p>or</p>
+          <label className="file-input-label">
+            Choose File
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              className="file-input"
+            />
+          </label>
+          {fileData.length > 0 && (
+            <p className="file-status">✓ File loaded successfully ({fileData.length} points)</p>
+          )}
+        </div>
+
+        <div className="action-buttons">
+          <button
+            className={`generate-button ${fileData.length > 0 ? 'active' : ''}`}
+            onClick={() =>
+              fileData.length > 0
+                ? navigate("/map", { state: { data: fileData } })
+                : alert("Please upload a valid CSV file before generating the map.")
+            }
+          >
+            <FaMapMarkedAlt className="button-icon" />
+            Generate Map
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Home;
