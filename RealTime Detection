@@ -1,0 +1,581 @@
+import { useNavigate } from "react-router-dom";
+
+const RealtimeDetection = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="realtime-container">
+      <iframe 
+        title="Pothole Tracker" 
+        className="realtime-frame" 
+        srcDoc={`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            padding: 16px;
+            background: linear-gradient(135deg, #0a1120 0%, #1a2639 100%);
+            color: #f8fafc;
+            max-width: 100%;
+            overscroll-behavior: none;
+            min-height: 100vh;
+        }
+        
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+        
+        header {
+            background-color: #3b82f6;
+            color: white;
+            padding: 16px;
+            text-align: center;
+        }
+        
+        .content {
+            padding: 16px;
+        }
+        
+        .sensor-status {
+            margin-bottom: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            background-color: #0f172a;
+            border-left: 4px solid #64748b;
+            color: #e2e8f0;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            background-color: #3b82f6;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:disabled {
+            background-color: #475569;
+            cursor: not-allowed;
+        }
+        
+        button:hover:not(:disabled) {
+            background-color: #2563eb;
+        }
+        
+        .record-btn {
+            background-color: #ef4444;
+        }
+        
+        .record-btn:hover:not(:disabled) {
+            background-color: #dc2626;
+        }
+        
+        .data-table {
+            width: 100%;
+            margin-top: 16px;
+            border-collapse: collapse;
+            overflow-x: auto;
+            display: block;
+            color: #e2e8f0;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .data-table th {
+            background-color: #1a2639;
+        }
+        
+        .data-table tr:hover {
+            background-color: #1e293b;
+        }
+        
+        .vibration-indicator {
+            width: 100%;
+            height: 40px;
+            margin: 16px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #0f172a;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .vibration-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #3b82f6;
+            transition: width 0.2s, background-color 0.2s;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+        
+        .severity-indicator {
+            text-align: center;
+            margin: 8px 0;
+            font-weight: bold;
+            font-size: 18px;
+            color: #f8fafc;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .info-box {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            background-color: #0f172a;
+            border-left: 4px solid #3b82f6;
+            color: #e2e8f0;
+        }
+        
+        .pothole-count {
+            text-align: center;
+            font-size: 18px;
+            margin: 12px 0;
+            font-weight: bold;
+            color: #f8fafc;
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+            
+            .content {
+                padding: 12px;
+            }
+            
+            button {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Pothole Tracker</h1>
+        </header>
+        
+        <div class="content">
+            <div class="sensor-status" id="sensorStatus">
+                Checking sensors availability...
+            </div>
+            
+            <div class="info-box">
+                <p>Drive with your phone mounted securely on your dashboard or windshield. The app will automatically detect potholes based on vibrations.</p>
+            </div>
+            
+            <div class="vibration-indicator">
+                <div class="vibration-bar" id="vibrationBar"></div>
+            </div>
+            
+            <div class="severity-indicator" id="severityIndicator">No vibration detected</div>
+            
+            <div class="pothole-count" id="potholeCount">Potholes detected: 0</div>
+            
+            <button id="startBtn">Start Tracking</button>
+            <button id="stopBtn" disabled>Stop Tracking</button>
+            <button id="downloadBtn" disabled>Download CSV</button>
+            <button id="clearBtn">Clear Data</button>
+            
+            <div style="overflow-x: auto; margin-top: 16px;">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Date/Time</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                            <th>Severity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <!-- Data will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables to store app state
+        let isTracking = false;
+        let hasAccelerometer = false;
+        let hasGyroscope = false;
+        let hasGeolocation = false;
+        let potholeData = [];
+        let currentPosition = null;
+        let accelerometerData = { x: 0, y: 0, z: 0 };
+        let gyroscopeData = { x: 0, y: 0, z: 0 };
+        let vibrationLevel = 0;
+        let accelerometerListener = null;
+        let gyroscopeListener = null;
+        let geolocationWatchId = null;
+        let lastPotholeTime = 0;
+        const POTHOLE_COOLDOWN = 2000; // 2 seconds between pothole detections
+        
+        // Get DOM elements
+        const sensorStatus = document.getElementById('sensorStatus');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const dataTableBody = document.getElementById('dataTableBody');
+        const vibrationBar = document.getElementById('vibrationBar');
+        const severityIndicator = document.getElementById('severityIndicator');
+        const potholeCount = document.getElementById('potholeCount');
+        
+        // Check sensor availability
+        function checkSensors() {
+            let statusHtml = '';
+            
+            // Check accelerometer
+            if ('DeviceMotionEvent' in window) {
+                hasAccelerometer = true;
+                statusHtml += '✅ Accelerometer available<br>';
+            } else {
+                hasAccelerometer = false;
+                statusHtml += '❌ Accelerometer not available<br>';
+            }
+            
+            // Check gyroscope
+            if ('DeviceOrientationEvent' in window) {
+                hasGyroscope = true;
+                statusHtml += '✅ Gyroscope available<br>';
+            } else {
+                hasGyroscope = false;
+                statusHtml += '❌ Gyroscope not available<br>';
+            }
+            
+            // Check geolocation
+            if ('geolocation' in navigator) {
+                hasGeolocation = true;
+                statusHtml += '✅ Geolocation available<br>';
+            } else {
+                hasGeolocation = false;
+                statusHtml += '❌ Geolocation not available<br>';
+            }
+            
+            sensorStatus.innerHTML = statusHtml;
+            
+            // Update button states
+            updateButtonStates();
+        }
+        
+        // Update buttons based on app state
+        function updateButtonStates() {
+            const sensorsAvailable = hasAccelerometer && hasGyroscope && hasGeolocation;
+            startBtn.disabled = isTracking || !sensorsAvailable;
+            stopBtn.disabled = !isTracking;
+            downloadBtn.disabled = potholeData.length === 0;
+        }
+        
+        // Start tracking
+        function startTracking() {
+            // Request permission for sensors on iOS (must be triggered by user action)
+            if (typeof DeviceMotionEvent !== 'undefined' && 
+                typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            startSensors();
+                        } else {
+                            alert('Sensor permission denied');
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                startSensors();
+            }
+        }
+        
+        // Start sensors after permission
+        function startSensors() {
+            isTracking = true;
+            
+            // Start accelerometer
+            if (hasAccelerometer) {
+                accelerometerListener = window.addEventListener('devicemotion', handleAccelerometerData);
+            }
+            
+            // Start gyroscope
+            if (hasGyroscope) {
+                gyroscopeListener = window.addEventListener('deviceorientation', handleGyroscopeData);
+            }
+            
+            // Start geolocation
+            if (hasGeolocation) {
+                geolocationWatchId = navigator.geolocation.watchPosition(
+                    position => {
+                        currentPosition = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        };
+                    },
+                    error => {
+                        console.error('Geolocation error:', error);
+                        alert('Geolocation error: ' + error.message);
+                    },
+                    { enableHighAccuracy: true, maximumAge: 0 }
+                );
+            }
+            
+            updateButtonStates();
+        }
+        
+        // Stop tracking
+        function stopTracking() {
+            isTracking = false;
+            
+            // Stop accelerometer
+            if (accelerometerListener) {
+                window.removeEventListener('devicemotion', handleAccelerometerData);
+            }
+            
+            // Stop gyroscope
+            if (gyroscopeListener) {
+                window.removeEventListener('deviceorientation', handleGyroscopeData);
+            }
+            
+            // Stop geolocation
+            if (geolocationWatchId) {
+                navigator.geolocation.clearWatch(geolocationWatchId);
+            }
+            
+            updateButtonStates();
+        }
+        
+        // Handle accelerometer data
+        function handleAccelerometerData(event) {
+            // Get acceleration data
+            const acceleration = event.accelerationIncludingGravity;
+            if (!acceleration) return;
+            
+            // Update acceleration data
+            accelerometerData = {
+                x: acceleration.x || 0,
+                y: acceleration.y || 0,
+                z: acceleration.z || 0
+            };
+            
+            // Calculate vibration level
+            detectPothole();
+        }
+        
+        // Handle gyroscope data
+        function handleGyroscopeData(event) {
+            gyroscopeData = {
+                x: event.beta || 0,  // X-axis rotation in degrees
+                y: event.gamma || 0, // Y-axis rotation in degrees
+                z: event.alpha || 0  // Z-axis rotation in degrees
+            };
+        }
+        
+        // Detect pothole based on sensor data
+        function detectPothole() {
+            // Calculate magnitude of acceleration (vibration)
+            const magnitude = Math.sqrt(
+                Math.pow(accelerometerData.x, 2) +
+                Math.pow(accelerometerData.y, 2) +
+                Math.pow(accelerometerData.z, 2)
+            );
+            
+            // Normalize to 0-100 scale (9.8 m/s² is normal gravity)
+            // Values over 12 m/s² are significant vibrations
+            const normalValue = 9.8;
+            const significantValue = 15;
+            const maxValue = 30;
+            
+            // Calculate vibration level as percentage
+            vibrationLevel = Math.min(100, Math.max(0, 
+                ((magnitude - normalValue) / (maxValue - normalValue)) * 100
+            ));
+            
+            // Update UI to show vibration
+            updateVibrationUI(vibrationLevel);
+            
+            // Detect pothole if vibration is significant
+            const now = Date.now();
+            if (vibrationLevel > 30 && now - lastPotholeTime > POTHOLE_COOLDOWN) {
+                lastPotholeTime = now;
+                recordPothole(vibrationLevel);
+            }
+        }
+        
+        // Update vibration UI
+        function updateVibrationUI(level) {
+            // Update vibration bar
+            vibrationBar.style.width = \`\${level}%\`;
+            
+            // Update vibration color
+            if (level < 20) {
+                vibrationBar.style.backgroundColor = '#3b82f6'; // Blue
+                severityIndicator.textContent = 'Smooth road';
+            } else if (level < 40) {
+                vibrationBar.style.backgroundColor = '#10b981'; // Green
+                severityIndicator.textContent = 'Minor bumps';
+            } else if (level < 60) {
+                vibrationBar.style.backgroundColor = '#f59e0b'; // Orange
+                severityIndicator.textContent = 'Rough road';
+            } else if (level < 80) {
+                vibrationBar.style.backgroundColor = '#f97316'; // Dark orange
+                severityIndicator.textContent = 'Significant pothole';
+            } else {
+                vibrationBar.style.backgroundColor = '#ef4444'; // Red
+                severityIndicator.textContent = 'Severe pothole';
+            }
+        }
+        
+        // Record pothole data
+        function recordPothole(severityLevel) {
+            if (!currentPosition) {
+                console.log('No position data available');
+                return;
+            }
+            
+            const timestamp = new Date();
+            
+            // Determine severity category
+            let severity;
+            if (severityLevel < 40) {
+                severity = 'Low';
+            } else if (severityLevel < 70) {
+                severity = 'Medium';
+            } else {
+                severity = 'High';
+            }
+            
+            // Create pothole record
+            const pothole = {
+                timestamp: timestamp,
+                latitude: currentPosition.latitude,
+                longitude: currentPosition.longitude,
+                severity: severity,
+                severityValue: Math.round(severityLevel)
+            };
+            
+            // Add to data array
+            potholeData.push(pothole);
+            
+            // Update UI
+            updateDataTable();
+            potholeCount.textContent = \`Potholes detected: \${potholeData.length}\`;
+            updateButtonStates();
+        }
+        
+        // Update data table
+        function updateDataTable() {
+            // Clear table
+            dataTableBody.innerHTML = '';
+            
+            // Add data rows (show only last 10 entries)
+            const displayData = potholeData.slice(-10);
+            displayData.forEach(pothole => {
+                const row = document.createElement('tr');
+                
+                // Format date
+                const formattedDate = \`\${pothole.timestamp.toLocaleDateString()} \${pothole.timestamp.toLocaleTimeString()}\`;
+                
+                // Add cells
+                row.innerHTML = \`
+                    <td>\${formattedDate}</td>
+                    <td>\${pothole.latitude.toFixed(6)}</td>
+                    <td>\${pothole.longitude.toFixed(6)}</td>
+                    <td>\${pothole.severity} (\${pothole.severityValue}%)</td>
+                \`;
+                
+                dataTableBody.appendChild(row);
+            });
+        }
+        
+        // Download data as CSV
+        function downloadCSV() {
+            if (potholeData.length === 0) {
+                alert('No data to download');
+                return;
+            }
+            
+            // Create CSV header
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            csvContent += 'Date,Time,Latitude,Longitude,Severity,SeverityValue\\n';
+            
+            // Add rows
+            potholeData.forEach(pothole => {
+                const date = pothole.timestamp.toLocaleDateString();
+                const time = pothole.timestamp.toLocaleTimeString();
+                
+                csvContent += \`\${date},\${time},\${pothole.latitude},\${pothole.longitude},\${pothole.severity},\${pothole.severityValue}\\n\`;
+            });
+            
+            // Create download link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            
+            // Set filename with current date
+            const now = new Date();
+            const filename = \`pothole_data_\${now.getFullYear()}-\${(now.getMonth()+1).toString().padStart(2, '0')}-\${now.getDate().toString().padStart(2, '0')}.csv\`;
+            link.setAttribute('download', filename);
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Clear all data
+        function clearData() {
+            if (potholeData.length > 0 && confirm('Are you sure you want to clear all pothole data?')) {
+                potholeData = [];
+                updateDataTable();
+                potholeCount.textContent = 'Potholes detected: 0';
+                updateButtonStates();
+            }
+        }
+        
+        // Event listeners
+        startBtn.addEventListener('click', startTracking);
+        stopBtn.addEventListener('click', stopTracking);
+        downloadBtn.addEventListener('click', downloadCSV);
+        clearBtn.addEventListener('click', clearData);
+        
+        // Initialize app
+        checkSensors();
+    </script>
+</body>
+</html>
+        `}
+      />
+      <button className="back-button" onClick={() => navigate("/")}>
+        Go Back
+      </button>
+    </div>
+  );
+};
+
+export default RealtimeDetection;
